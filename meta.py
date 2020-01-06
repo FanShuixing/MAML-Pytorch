@@ -19,6 +19,7 @@ class Meta(nn.Module):
         """
 
         :param args:
+        self.update_step:eg:5
         """
         super(Meta, self).__init__()
 
@@ -65,9 +66,9 @@ class Meta(nn.Module):
     def forward(self, x_spt, y_spt, x_qry, y_qry):
         """
 
-        :param x_spt:   [b, setsz, c_, h, w]
+        :param x_spt:   [b, setsz, c_, h, w] setsz=n_way*k_shot,c_:channel
         :param y_spt:   [b, setsz]
-        :param x_qry:   [b, querysz, c_, h, w]
+        :param x_qry:   [b, querysz, c_, h, w] eg:querysz=n_way*k_query=5*15
         :param y_qry:   [b, querysz]
         :return:
         """
@@ -79,7 +80,7 @@ class Meta(nn.Module):
 
 
         for i in range(task_num):
-
+            #每一个batch相当于一个task
             # 1. run the i-th task and compute loss for k=0
             logits = self.net(x_spt[i], vars=None, bn_training=True)
             loss = F.cross_entropy(logits, y_spt[i])
@@ -135,10 +136,12 @@ class Meta(nn.Module):
 
         # optimize theta parameters
         self.meta_optim.zero_grad()
+        #反向传播
         loss_q.backward()
         # print('meta update')
         # for p in self.net.parameters()[:5]:
         # 	print(torch.norm(p).item())
+        #更新参数
         self.meta_optim.step()
 
 
@@ -203,7 +206,7 @@ class Meta(nn.Module):
 
             logits_q = net(x_qry, fast_weights, bn_training=True)
             # loss_q will be overwritten and just keep the loss_q on last update step.
-            loss_q = F.cross_entropy(logits_q, y_qry)
+            # loss_q = F.cross_entropy(logits_q, y_qry)
 
             with torch.no_grad():
                 pred_q = F.softmax(logits_q, dim=1).argmax(dim=1)
